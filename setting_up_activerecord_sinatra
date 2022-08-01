@@ -1,0 +1,101 @@
+gem install corneal 
+corneal new APP-NAME
+bundle install
+
+metric has many collections 
+collections have many metrics
+
+gem install bcrypt # put this in gemfile!
+
+in ./models/collection.rb
+class Collection < ActiveRecord::Base
+  has_and_belongs_to_many :metric_tests
+end
+
+in ./models/metrictest.rb
+class MetricTest < ActiveRecord::Base
+  has_and_belongs_to_many :collections
+end
+
+
+in the /config folder, create the environment file 'database.yml'
+development:
+  adapter: sqlite3
+  database: database.db
+test:
+  adapter: sqlite3
+  database: database.db
+production:
+  adapter: sqlite3
+  database: evaluator.db
+
+
+Create the tables
+rake db:create_migration NAME=create_metrictests
+rake db:create_migration NAME=create_collections
+rake db:create_migration NAME=create_collections_to_metrics 
+
+
+##  PAY ATTENTION
+## rake/rails magic naming looks at the capitalization of MetricTests and wants a table called metric_tests
+20220801084058_create_metrictests.rb
+class CreateMetrictests < ActiveRecord::Migration[7.0]
+  create_table :metric_tests do |t|   # HERE
+    t.string :smarturi, :default => "", :null => false
+  end
+end
+
+
+
+20220801084058_create_collections.rb
+class CreateCollections < ActiveRecord::Migration[7.0]
+    create_table :collections do |t|
+      t.string :name, :default => "", :null => false
+      t.string :description, :default => "", :null => false
+    end
+end
+
+
+
+20220801090238_create_collections_to_metrics.rb
+class CreateCollectionsToMetrics < ActiveRecord::Migration[7.0]
+  create_join_table :metric_tests, :collections do |t|   # HERE
+    t.index :metric_test_id    # HERE
+    t.index :collection_id
+  end
+end
+
+
+rake db:reset
+rake db:migrate
+$ rake -T   # lists all rake commands
+
+Now seed the database
+touch db/seeds.rb
+
+db/seeds.rb
+metrics = [
+  {smarturi: 'https://example.com/metric1'},
+  {smarturi: 'https://example.com/metric2'},
+]
+metrics.each do |u|
+  MetricTest.create(u)
+end
+
+collections = [
+  {name: 'only first', description: "only the first metric"},
+  {name: 'all', description: "all the first metric"},
+]
+collections.each do |u|
+  Collection.create(u)
+end
+
+
+
+now go into irb
+irb> require 'require_all'
+irb> require 'app'
+irb> c = Collection.find(1)
+irb> c.metric_test_ids=[1,2]
+irb> c.metric_tests
+
